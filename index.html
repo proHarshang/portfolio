@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dev Terminal Portfolio</title>
+    <style>
+        :root {
+            --bg-color: #0d0d12;
+            --terminal-bg: #0a0a0f;
+            --neon-blue: #0084ff;
+            --neon-purple: #a742f5;
+            --text-color: #e0e0e0;
+            --header-height: 30px;
+            --terminal-height: calc(100vh - var(--header-height));
+            --primary: #0cffdd;
+            --dark: #121212;
+            --darker: #0a0a0a;
+            --light: #f0f0f0;
+            --accent: #33ff33;
+            --mobile-scale: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                transform: scale(var(--mobile-scale));
+                transform-origin: top left;
+                width: calc(100% / var(--mobile-scale));
+                height: calc(100% / var(--mobile-scale));
+                overflow-x: hidden;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .prompt-line {
+                margin: 10px 0;
+            }
+
+            .file-system {
+                margin: 10px 0;
+                padding: 10px;
+            }
+
+            .file-content {
+                margin-left: 40px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+
+            .xp-markers {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .marker {
+                width: auto;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            font-size: 16px;
+            height: 100vh;
+        }
+
+        /* Grid background overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(23, 23, 33, 0.4) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(23, 23, 33, 0.4) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        a {
+            color: #4545ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .terminal-window {
+            background-color: var(--terminal-bg);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2),
+                0 0 30px rgba(167, 66, 245, 0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .terminal-header {
+            height: var(--header-height);
+            background-color: #131320;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-buttons {
+            display: flex;
+        }
+
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .terminal-button.close {
+            background-color: #ff5f56;
+        }
+
+        .terminal-button.minimize {
+            background-color: #ffbd2e;
+        }
+
+        .terminal-button.maximize {
+            background-color: #27c93f;
+        }
+
+        .terminal-title {
+            margin-left: 10px;
+            font-size: 12px;
+            color: #888;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            overflow-y: auto;
+            height: calc(100vh - 150px);
+            min-height: 400px;
+        }
+
+        .prompt-line {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 15px 0px;
+        }
+
+        .prompt {
+            color: var(--accent);
+            margin-right: 10px;
+            white-space: nowrap;
+            word-spacing: -8px;
+            opacity: 50%;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background-color: var(--primary);
+            animation: blink 1s step-end infinite;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .typed-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+            animation: typing 0.1s steps(1);
+        }
+
+        .skills-typed-text,
+        .contact-typed-text {
+            line-height: 1.4;
+        }
+
+        @keyframes typing {
+            from {
+                width: 0
+            }
+
+            to {
+                width: 100%
+            }
+        }
+
+        /* Header  */
+        header {
+            position: relative;
+            border-bottom: 1px solid rgba(12, 255, 221, 0.3);
+        }
+
+        .hud-frame {
+            position: relative;
+            padding: 22px;
+            margin: 40px 0px;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            column-gap: 10px;
+            row-gap: 20px;
+        }
+
+        .top-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .player-tag {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(12, 255, 221, 0.7);
+            letter-spacing: 1px;
+        }
+
+        .player-specialisation {
+            font-size: 1rem;
+            width: max-content;
+            margin-top: 6px;
+            letter-spacing: 1px;
+        }
+
+        .player-status {
+            background-color: rgba(12, 255, 221, 0.2);
+            border: 1px solid var(--primary);
+            padding: 5px 10px;
+            color: var(--primary);
+            animation: blink 2s infinite;
+            font-weight: bold;
+            width: fit-content;
+            height: fit-content;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        nav {
+            margin-top: 15px;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 25px;
+        }
+
+        .nav-links li {
+            position: relative;
+        }
+
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.3s;
+            padding: 5px 0;
+            position: relative;
+        }
+
+        .nav-links a::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links a:hover::before {
+            width: 100%;
+        }
+
+        .corner-decoration {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid var(--primary);
+        }
+
+        .top-left {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .top-right {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .bottom-left {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+        }
+
+        .bottom-right {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+
+
+        /* XP BAR STYLES - Terminal Style */
+        .xp-section {
+            margin: 40px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .xp-title {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .xp-title h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .xp-level {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .xp-container {
+            background: rgba(10, 10, 15, 0.7);
+            height: 24px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #333;
+            font-family: monospace;
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 75%;
+            background-color: var(--primary);
+            opacity: 0.7;
+            position: relative;
+            transition: width 1.5s ease-out;
+        }
+
+        .xp-fill::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 2px;
+            background-color: #fff;
+            animation: blink 1s step-end infinite;
+        }
+
+        .xp-markers {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-top: 5px;
+            padding: 0 5px;
+            flex-direction: row;
+        }
+
+        .marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100px;
+            text-align: center;
+        }
+
+        .marker-icon {
+            font-family: monospace;
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+
+        .marker:nth-child(1) .marker-icon {
+            color: #888;
+        }
+
+        .marker:nth-child(2) .marker-icon {
+            color: #888;
+        }
+
+        .marker:nth-child(3) .marker-icon {
+            color: var(--primary);
+        }
+
+        .marker-label {
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .marker:nth-child(1) .marker-label {
+            color: #888;
+        }
+
+        .marker:nth-child(2) .marker-label {
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        .marker:nth-child(3) .marker-label {
+            color: var(--primary);
+        }
+
+        .current-position {
+            position: absolute;
+            left: 75%;
+            transform: translateX(-50%);
+            top: 0px;
+        }
+
+        .position-indicator {
+            width: 2px;
+            height: 30px;
+            background-color: #fff;
+            margin: 0 auto;
+            animation: blink 1s step-end infinite;
+        }
+
+        .position-label {
+            display: none;
+            background: var(--terminal-bg);
+            color: var(--primary);
+            font-size: 10px;
+            padding: 2px 6px;
+            white-space: nowrap;
+            text-align: center;
+            margin-top: 2px;
+            font-family: monospace;
+            border: 1px solid #333;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: rgba(19, 19, 32, .8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+
+        /* Scanlines effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 0, 0, 0.02) 50%);
+            background-size: 100% 4px;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0.2;
+        }
+
+        /* CRT flicker effect */
+        .flicker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 15, .05);
+            opacity: 0;
+            z-index: 3;
+            pointer-events: none;
+            animation: flicker 5s infinite;
+        }
+
+        @keyframes flicker {
+
+            0%,
+            100% {
+                opacity: 0;
+            }
+
+            92% {
+                opacity: 0;
+            }
+
+            93% {
+                opacity: 0.5;
+            }
+
+            94% {
+                opacity: 0;
+            }
+
+            96% {
+                opacity: 0.5;
+            }
+
+            98% {
+                opacity: 0;
+            }
+        }
+
+        /* File System Visualization */
+        .file-system {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(19, 19, 32, 0.8);
+            border: 1px solid rgba(12, 255, 221, 0.3);
+            border-radius: 4px;
+            margin-bottom: 45px;
+        }
+
+        .directory {
+            margin-left: 20px;
+            color: var(--primary);
+        }
+
+        .file {
+            margin-left: 20px;
+            color: var(--text-color);
+        }
+
+        .file:hover {
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        .file-content {
+            display: none;
+            margin-left: 54px;
+            padding: 10px;
+        }
+
+        .file-content.show {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .file-content.auto-show {
+            display: block;
+            animation: typeIn 1s steps(40, end);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes typeIn {
+            from { 
+                opacity: 0;
+                max-height: 0;
+            }
+            to { 
+                opacity: 1;
+                max-height: 1000px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">./display_profile</span>
+        </div>
+
+        <header>
+            <div class="hud-frame">
+                <div class="corner-decoration top-left"></div>
+                <div class="corner-decoration top-right"></div>
+                <div class="corner-decoration bottom-left"></div>
+                <div class="corner-decoration bottom-right"></div>
+
+                <div class="top-bar">
+                    <h1 class="player-tag">Harshang Thakar</h1>
+                    <h2 class="player-specialisation">MERN Stack Developer</h2>
+                </div>
+
+                <div class="player-status">
+                    <a href="Harshang_Resume.pdf" target="_blank" style="color: var(--primary); text-decoration: none;">DOWNLOAD CV</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="xp-section">
+            <div class="xp-title">
+                <h2>LEVEL</h2>
+            </div>
+
+            <div class="xp-container">
+                <div class="xp-fill"></div>
+                <div class="current-position">
+                    <div class="position-indicator"></div>
+                    <div class="position-label">CURRENT_POSITION</div>
+                </div>
+            </div>
+
+            <div class="xp-markers">
+                <div class="marker">
+                    <div class="marker-icon">[INTERN]</div>
+                </div>
+                <div class="marker">
+                    <div class="marker-icon">[JUNIOR]</div>
+                </div>
+                <div class="marker">
+                    <div class="marker-icon">[SENIOR]</div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">MERN stack Experience</div>
+                    <div class="stat-value">2+ Years</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">NEXT JS && TypeScript</div>
+                    <div class="stat-value">6+ Months</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Basic Web-Development</div>
+                    <div class="stat-value">4+ Years</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">./skills</span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="typed-text skills-typed-text">
+SKILLS:
+- React.js [█████████░]
+- Next.js [███████░░░]
+- Node.js [█████████░]
+- Express [█████████░]
+- Redux [████████░░]
+- TypeScript [████████░░]
+
+DATABASES:
+- MongoDB [████████░░]
+- PostgreSQL [███████░░░]
+
+FAMILIAR TOOLS:
+- Git [████████░░]
+- Docker [████░░░░░░]
+- Figma [█████████░]
+- Linux [███████░░░]
+- Vercel [██████░░░░]
+- Render [███████░░░]
+            </span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">./Abilities</span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="typed-text">
+1] Full-stack Development <span style="color: limegreen">[HIGH]</span>
+2] Frontend Development <span style="color: limegreen">[HIGH]</span>
+3] Backend Development <span style="color: limegreen">[HIGH]</span>
+4] UI/UX && System Design <span style="color: yellow">[MEDIUM] </span>
+5] DEPLOYMENT IN LINUX VPS <span style="color: dimgrey">[LOW]</span>
+            </span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">./Archivements</span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="typed-text">
+[1] Earned a Certificate of Participation in the 36-hour Code Carnival Hackathon, organized by the Google Developer Student Club at Atmiya University, Rajkot.
+
+[2] Awarded a certificate of recognition from H.N.S College of I.T. for securing 1st rank in the I.T. Quiz Competition
+
+[3] Certificate in Project Management - LinkedIn Learning | Covered core project lifecycle concepts, risk mitigation, and team coordination practices. <a href="https://www.linkedin.com/learning/certificates/4a32a6a9051f9dae7919474be027c9170cab295a7c9a454c51ac93339dd68cf3?trk=share_certificate&lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base%3B51a0MB%2B6T66FhT%2F%2FLmqFWg%3D%3D" target="_blank">[Credential]</a>
+            </span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">ls -la recent-projects/</span>
+        </div>
+
+        <div class="file-system">
+            <div class="directory">📁 recent-projects/</div>
+            <div class="directory">├── 📁 ecommerce-platform/</div>
+            <div class="file" onclick="toggleContent('ecommerce')"><span style="margin-right: 40px">│</span> └── 📄 README.md</div>
+            <div class="file-content auto-show" id="ecommerce">
+                <span style="color: yellow;">[TITLE]</span> Complete E-Commerce Platform with complex admin-panel <br>
+                <span style="color: yellow;">[TECH]</span> React JS, Node.js, Express.js, MongoDB, TypeScript <br>
+                <span style="color: yellow;">[DESCRIPTION]</span>
+                [1] A fully functional multilingual e-commerce platform with a role based complex dashboard to handle and manage whole system and chat support. <br>
+                [2] Integrated PayPal for online payments. <br>
+                [3] Integrated DHL API for shipping and tracking and calculate charges to avoid manual shipping via DHL portal and PayPal for direct amount refund to customer. <br>
+                [4] Contains advanced features like order exchange, live cart stock updates, and auto invoice and status email sending along with additional pages like career, newsletters, live chat support feature.
+            </div>
+
+            <div class="directory">├── 📁 techpack-generator/</div>
+            <div class="file" onclick="toggleContent('techpack')"><span style="margin-right: 40px">│</span> └── 📄 README.md</div>
+            <div class="file-content" id="techpack">
+                <span style="color: yellow;">[TITLE]</span> Techpack Generator Software or designers <br>
+                <span style="color: yellow;">[TECH]</span> React JS, Node.js, Express.js, MongoDB <br>
+                <span style="color: yellow;">[DESCRIPTION]</span> <br>
+                Software for Internal use of company's fashion designers to generate and manage techpacks PDFs which automate work and save 80% of time compared to manual work.
+            </div>
+
+            <div class="directory">├── 📁 carrycabs/</div>
+            <div class="file" onclick="toggleContent('carrycabs')"><span style="margin-right: 40px">│</span> └── 📄 README.md</div>
+            <div class="file-content" id="carrycabs">
+                <span style="color: yellow;">[TITLE]</span> CarryCabs - A city level cab booking site <br>
+                <span style="color: yellow;">[TECH]</span> Next.js, TypeScript, Tailwind CSS <br>
+                <span style="color: yellow;">[DESCRIPTION]</span> <br>
+                A live cab booking site in Next JS with Typescript deployed on Ubuntu VPS using Nginx, and integrated with the fast2sms API to send OTP SMS for verification.
+            </div>
+
+            <div class="directory">└── 📁 crypto-bot/</div>
+            <div class="file" onclick="toggleContent('crypto')"><span style="margin-right: 40px; visibility: hidden;">│</span> └── 📄 README.md</div>
+            <div class="file-content" id="crypto">
+                <span style="color: yellow;">[TITLE]</span> Crypto Trading Bot  <br>
+                <span style="color: yellow;">[TECH]</span> Node.js, TypeScript <br>
+                <span style="color: yellow;">[DESCRIPTION]</span> <br>
+                A Node JS bot that runs based on a defined strategy of repeating the cycle of buying and selling crypto
+                after pre calculating the profit of every trade cycle based on order book and market spread.
+                Key Operations : <br>
+                [1] Fetch the order book of multiple pairs to calculate spread and profit. <br>
+                [2] Place and cancel order at regular interval to be on top of order book. <br>
+                [3] Fetch order history to avoid multiple order placing. <br>
+            </div>
+        </div>
+
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">contact --list </span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="typed-text contact-typed-text">
+- [Email] <a href="mailto:harshang.developer@gmail.com" target="_blank">harshang.developer@gmail.com</a>
+- [LinkedIn] <a href="https://linkedin.com/in/harshang-thakar" target="_blank">linkedin.com/in/harshang-thakar</a>
+- [Website] <a href="#" target="_blank">harshang.github.com</a>
+- [Resume] <a href="Harshang_Resume.pdf" target="_blank">Harshang_Resume.pdf</a>
+- [Instagram] <span style="color: dimgray">503 - Unavailable</span>
+            </span>
+        </div>
+
+        <div class="prompt-line">
+            <span class="prompt">harshang @ portfolio:~$</span>
+            <span class="typed-text">echo "Thank You"</span>
+        </div>
+    </div>
+
+    <script>
+        function toggleContent(id) {
+            const content = document.getElementById(id);
+            if (content.classList.contains('auto-show')) {
+                content.classList.remove('auto-show');
+            } else {
+                content.classList.toggle('show');
+            }
+        }
+    </script>
+</body>
+
+</html>
